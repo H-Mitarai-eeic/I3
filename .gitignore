@@ -1,3 +1,8 @@
+#user
+./bin/*
+./sounds/*
+./output/*
+
 # Prerequisites
 *.d
 
