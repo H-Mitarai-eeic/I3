@@ -1,7 +1,7 @@
 #user
-./bin/*
-./sounds/*
-./output/*
+./bin/
+./sounds/
+./output/
 
 # Prerequisites
 *.d
