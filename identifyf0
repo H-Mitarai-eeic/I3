@@ -3,3 +3,4 @@ filename=./sounds/doremi.wav
 out_filename_raw=./output/doremi_PSD.raw
 out_filename_dat=./output/doremi_PSD.dat
 rec -t raw -c 1 -e s -r 44100 -q - | ./bin/identify_f0 8192 1000000
+# デフォルト　1000000

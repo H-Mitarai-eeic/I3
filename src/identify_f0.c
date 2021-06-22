@@ -327,7 +327,7 @@ int main(int argc, char ** argv) {
           store2key(f0 ,key, KeyNum);
     }
     //出力
-    //printf("%d, %f\n", n0, f0);
+    //printf("%d, %f\n", nt, f0);
     printf("\e[%dA", 2);
     print_keyboard(key, KeyNum);
     fflush(stdout);

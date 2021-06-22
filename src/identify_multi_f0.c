@@ -165,6 +165,30 @@ double max_peak(double *signal, long n){
   }
   return index;
 }
+int malti_peak(double *signal, int nf, int *peak_index, int NUM){  //0 ~ nfまでの領域で NUM個大きい順にpeak インデックスを取得し, peak_indexに書き込む(書き込まれる順番は大きい順ではない) 返り値は書き込んだピーク数
+  double *signal_MAX = calloc(sizeof(double), NUM);
+  double signal_low_lim = 0;
+  int i, j;
+  j = 0;
+  for(i = 1; i < nf - 1; i++){
+      if(signal[i - 1] <= signal[i] && signal[i] > signal[i + 1]){
+        if(j == 0){
+          peak_index[j] = i;
+          signal_MAX[j] = signal[i];
+          j++;
+        }
+        if(j < NUM){
+          peak_index[j] = i;
+          signal_MAX[j] = signal[i];
+          j++;
+          if(j == NUM){
+            //sort
+          }
+        }
+      }
+    }
+  }
+}
 
 void complex_to_re(complex double * X,double * s, long n) { //実部のみ取り出す
   long i;
@@ -206,6 +230,17 @@ int rounding(double A){  //四捨五入
   }
   else
   return (int)A;
+}
+void sortarrays(double *peak, int *index, int N){  //peakの値のよって２つの配列を降順にソート
+  for(i = 1; i <= N - 2; i++){
+    for(j = N - 1; j >= i; j--){
+        if(num[j] > num[j - 1]){
+            temp = num[j - 1];
+            num[j - 1] = num[j];
+            num[j] = temp;
+        }
+    }
+  }
 }
 void print_keyboard(char *key, int N){
     //int N = 52;
