@@ -1,17 +1,3 @@
-/* 
- * fft.c
- * 使い方
- *   ./fft n
- * 
- * 以下を繰り返す:
- *   標準入力から, 16 bit integerをn個読む
- *   FFTする
- *   逆FFTする
- *   標準出力へ出す
- *
- * したがって「ほぼ何もしない」フィルタになる
- * 
- */
 #include <assert.h>
 #include <complex.h>
 #include <math.h>
@@ -44,16 +30,6 @@ ssize_t read_n(int fd, ssize_t n, void * buf) {
   return re;
 }
 
-/* fdへ, bufからnバイト書く */
-ssize_t write_n(int fd, ssize_t n, void * buf) {
-  ssize_t wr = 0;
-  while (wr < n) {
-    ssize_t w = write(fd, buf + wr, n - wr);
-    if (w == -1) die("write");
-    wr += w;
-  }
-  return wr;
-}
 
 /* 標本(整数)を複素数へ変換 */
 void sample_to_complex(sample_t * s, 
@@ -139,17 +115,24 @@ void print_complex(FILE * wp,
 	    cabs(Y[i]), atan2(cimag(Y[i]), creal(Y[i])));
   }
 }
-void print_PSD(FILE * wp, double * PSD, long n, double T) {
+void print_PSD(FILE * wp, complex double * PSD, long n, double T) {
   long i;
   for (i = 0; i < n; i++) {
-    fprintf(wp, "%f %f\n", (double)i / T, PSD[i]);
+    //fprintf(wp, "%f %f\n", (double)i / T, PSD[i]);
+    fprintf(wp, "%ld %f %f\n", i, creal(PSD[i]), cimag(PSD[i]));
   }
 }
 
-void CALC_PSD(complex double * x, double * PSD, long n){
+void print_ACF(FILE * wA, double *ACF_re, long n) {
+  long i;
+  for (i = 0; i < n; i++) {
+    fprintf(wA, "%ld %f\n", i, ACF_re[i]);
+  }
+}
+void CALC_PSD(complex double * x, complex double * PSD, long n, double T){
   long i;
   for(i = 0; i < n; i++){
-    PSD[i] = x[i] * conj(x[i]);
+    PSD[i] = (x[i] * conj(x[i])) / T;
   }
 }
 
@@ -165,6 +148,29 @@ double f_at_PSD_max(double * PSD, long n, double T){
   }
   return f;
 }
+double max_peak(double *signal, long n){
+  double max_peak = 0;
+  int i;
+  int index;
+  for(i = 1; i < n / 2 - 1; i++ ){
+    if(signal[i - 1] <= signal[i] && signal[i] > signal[i + 1]){
+      if (max_peak < signal[i]){
+        max_peak = signal[i];
+        index = i;
+      }
+    }
+  }
+  return index;
+}
+
+void complex_to_re(complex double * X, 
+		       double * s, 
+		       long n) {
+  long i;
+  for (i = 0; i < n; i++) {
+    s[i] = creal(X[i]);
+  }
+}
 
 int main(int argc, char ** argv) {
   (void)argc;
@@ -175,11 +181,22 @@ int main(int argc, char ** argv) {
   }
   FILE * wp = fopen("./output/fft.dat", "wb");
   if (wp == NULL) die("fopen");
+  FILE * wA = fopen("./output/ACF.dat", "wb");
+  if (wA == NULL) die("fopen");
+  FILE * wP = fopen("./output/PSD_re.dat", "wb");
+  if (wP == NULL) die("fopen");
+
   sample_t * buf = calloc(sizeof(sample_t), n);
   complex double * X = calloc(sizeof(complex double), n);
   complex double * Y = calloc(sizeof(complex double), n);
-  double * PSD = calloc(sizeof(complex double), n);
-  double f0;
+  complex double * PSD = calloc(sizeof(complex double), n);
+  complex double * ACF_comp = calloc(sizeof(complex double), n);
+  double *ACF_re = calloc(sizeof(double), n);
+
+  double f0, T;
+  int n0;
+
+  T = (double)n / Fs;
 
   while (1) {
     /* 標準入力からn個標本を読む */
@@ -188,23 +205,28 @@ int main(int argc, char ** argv) {
     /* 複素数の配列に変換 */
     sample_to_complex(buf, X, n);
     /* FFT -> Y */
+
     fft(X, Y, n);
 
-    CALC_PSD(X, PSD, n);
-
+    CALC_PSD(Y, PSD, n, T);
+    print_PSD(wP, PSD, n, T);
     //print_PSD(1, PSD, n, n / Fs);
-    f0 = f_at_PSD_max(PSD, n, n / Fs);
-    printf("%f\n", f0);
-    //print_complex(wp, Y, n);
-    //fprintf(wp, "----------------\n");
+
+    print_complex(wp, Y, n);
+    fprintf(wp, "----------------\n");
 
     /* IFFT -> Z */
-    //ifft(Y, X, n);
+    ifft(PSD, ACF_comp, n);
+    //f0 = f_at_PSD_max(PSD, n, (double)n / Fs);
 
     /* 標本の配列に変換 */
-    //complex_to_sample(PSD, buf, n);
+    complex_to_re(ACF_comp, ACF_re, n);
+    n0 = max_peak(ACF_re, n);
+    f0 = Fs / n0;
+
+    printf("%d, %f\n", n0, f0);
     /* 標準出力へ出力 */
-    //write_n(1, m, buf);
+    print_ACF(wA, ACF_re, n);
   }
   fclose(wp);
   return 0;
