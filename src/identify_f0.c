@@ -9,7 +9,7 @@
 #define Fs 44100.0
 #define KeyNum 88
 #define A0_FREQ 27.5;
-#define Default_Threshold 1000000
+#define Default_Threshold 100000
 
 typedef short sample_t;
 
@@ -283,7 +283,8 @@ int main(int argc, char ** argv) {
   double *PSD_re = calloc(sizeof(double), n);
 
   double f0, T;
-  int nt, nf;
+  int nt;
+  //int nf;
 
   char key[KeyNum] = {0};
 
@@ -319,11 +320,11 @@ int main(int argc, char ** argv) {
     nt = max_peak(ACF_re, n);
     f0 = Fs / nt;
 
-    nf = rounding((double)n / Fs);
+    //nf = rounding((double)n / nt);
 
     //鍵盤の何番目に値するかを求める
     clear_array(key, KeyNum);
-    if(check_PSD(PSD_re, nf, threshold)){
+    if(check_PSD(PSD_re, 0, threshold)){
           store2key(f0 ,key, KeyNum);
     }
     //出力
@@ -335,5 +336,7 @@ int main(int argc, char ** argv) {
     print_ACF(wA, ACF_re, n);
   }
   fclose(wp);
+  fclose(wA);
+  fclose(wP);
   return 0;
 }

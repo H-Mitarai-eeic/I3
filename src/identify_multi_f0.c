@@ -9,10 +9,12 @@
 #define Fs 44100.0
 #define KeyNum 88
 #define A0_FREQ 27.5;
-#define Default_Threshold 1000000
+#define Default_Threshold 100000
+#define PeakNum 5 //ACFから一度に取り出すピーク数の上限
+#define ACF_Cal_Times 5  //ACFの計算回数
 
 typedef short sample_t;
-
+void sortarrays(double *peaks, int *index, int N);
 void die(char * s) {
   perror(s); 
   exit(1);
@@ -165,29 +167,39 @@ double max_peak(double *signal, long n){
   }
   return index;
 }
-int malti_peak(double *signal, int nf, int *peak_index, int NUM){  //0 ~ nfまでの領域で NUM個大きい順にpeak インデックスを取得し, peak_indexに書き込む(書き込まれる順番は大きい順ではない) 返り値は書き込んだピーク数
+int multi_peak(double *signal, int nt, int *peak_index, int NUM){  //0 ~ ntまでの領域で NUM個大きい順にpeak インデックスを取得し, peak_indexに書き込む(書き込まれる順番は大きい順ではない) 返り値は書き込んだピーク数
   double *signal_MAX = calloc(sizeof(double), NUM);
-  double signal_low_lim = 0;
+  //double signal_low_lim = 0;
   int i, j;
   j = 0;
-  for(i = 1; i < nf - 1; i++){
+  for(i = 1; i <= nt; i++){
       if(signal[i - 1] <= signal[i] && signal[i] > signal[i + 1]){
         if(j == 0){
           peak_index[j] = i;
           signal_MAX[j] = signal[i];
           j++;
         }
-        if(j < NUM){
+        else if(j < NUM){
           peak_index[j] = i;
           signal_MAX[j] = signal[i];
           j++;
           if(j == NUM){
             //sort
+            sortarrays(signal_MAX, peak_index, NUM);
+          }
+        }
+        else if(j == NUM){
+          if (signal_MAX[NUM - 1] < signal[i]){
+            peak_index[NUM - 1] = i;
+            signal_MAX[NUM - 1] = signal[i];
+            sortarrays(signal_MAX, peak_index, NUM);
           }
         }
       }
-    }
   }
+  sortarrays(signal_MAX, peak_index, j);
+  free(signal_MAX);
+  return j;
 }
 
 void complex_to_re(complex double * X,double * s, long n) { //実部のみ取り出す
@@ -231,13 +243,19 @@ int rounding(double A){  //四捨五入
   else
   return (int)A;
 }
-void sortarrays(double *peak, int *index, int N){  //peakの値のよって２つの配列を降順にソート
-  for(i = 1; i <= N - 2; i++){
+void sortarrays(double *peaks, int *index, int N){  //peakの値のよって２つの配列を降順にソート
+  int i, j;
+  double temp_p;
+  int temp_i;
+  for(i = 1; i <= N - 1; i++){
     for(j = N - 1; j >= i; j--){
-        if(num[j] > num[j - 1]){
-            temp = num[j - 1];
-            num[j - 1] = num[j];
-            num[j] = temp;
+        if(peaks[j] > peaks[j - 1]){
+            temp_p = peaks[j - 1];
+            temp_i = index[j - 1];
+            peaks[j - 1] = peaks[j];
+            index[j - 1] = index[j];
+            peaks[j] = temp_p;
+            index[j] = temp_i;
         }
     }
   }
@@ -302,13 +320,14 @@ int main(int argc, char ** argv) {
     fprintf(stderr, "error : n (%ld) not a power of two\n", n);
     exit(1);
   }
+  /*
   FILE * wp = fopen("./output/fft.dat", "wb");
   if (wp == NULL) die("fopen");
   FILE * wA = fopen("./output/ACF.dat", "wb");
   if (wA == NULL) die("fopen");
   FILE * wP = fopen("./output/PSD_re.dat", "wb");
   if (wP == NULL) die("fopen");
-
+  */
   sample_t * buf = calloc(sizeof(sample_t), n);
   complex double * X = calloc(sizeof(complex double), n);
   complex double * Y = calloc(sizeof(complex double), n);
@@ -318,12 +337,13 @@ int main(int argc, char ** argv) {
   double *PSD_re = calloc(sizeof(double), n);
 
   double f0, T;
-  int nt, nf;
+  int nt, nf, Np; //Np ピーク数
+  int nt_list[PeakNum] = {0};
+  int i;  //counter
 
   char key[KeyNum] = {0};
 
   T = (double)n / Fs;
-
   print_keyboard(key, KeyNum);
   printf("\e[%dA", 1);
   while (1) {
@@ -337,10 +357,10 @@ int main(int argc, char ** argv) {
     fft(X, Y, n);
 
     CALC_PSD(Y, PSD_comp, n, T);
-    print_PSD(wP, PSD_comp, n, T);
+    //print_PSD(wP, PSD_comp, n, T);
 
-    print_complex(wp, Y, n);
-    fprintf(wp, "----------------\n");
+    //print_complex(wp, Y, n);
+    //fprintf(wp, "----------------\n");
 
     /* IFFT で　ACFを求める */
     ifft(PSD_comp, ACF_comp, n);
@@ -352,14 +372,25 @@ int main(int argc, char ** argv) {
 
     /* AFCのピークを求め、基本周波数を求める */
     nt = max_peak(ACF_re, n);
-    f0 = Fs / nt;
-
-    nf = rounding((double)n / Fs);
-
-    //鍵盤の何番目に値するかを求める
+    Np = multi_peak(ACF_re, nt, nt_list, PeakNum);
     clear_array(key, KeyNum);
-    if(check_PSD(PSD_re, nf, threshold)){
-          store2key(f0 ,key, KeyNum);
+    //printf("### NP = %d #######\n", Np);
+    fflush(stdout);
+    for (i = 0; i < Np; i++){
+      f0 = Fs / nt_list[i];
+      ///printf("f0 = %f", f0);
+      fflush(stdout);
+      nf = rounding((double)n / nt_list[i]);
+      //printf("nt, = %d, nf = %d, f0 = %f\n",nt_list[i], nf, f0);
+      //fflush(stdout);
+
+
+      //鍵盤の何番目に値するかを求める
+      if(check_PSD(PSD_re, nf, threshold)){
+            store2key(f0 ,key, KeyNum);
+            //printf("stored\n");
+            //fflush(stdout);
+      }
     }
     //出力
     //printf("%d, %f\n", n0, f0);
@@ -367,8 +398,10 @@ int main(int argc, char ** argv) {
     print_keyboard(key, KeyNum);
     fflush(stdout);
     /* ACFデータを書き込み */
-    print_ACF(wA, ACF_re, n);
+    ///print_ACF(wA, ACF_re, n);
   }
-  fclose(wp);
+  //fclose(wp);
+  //fclose(wA);
+  //fclose(wP);
   return 0;
 }
