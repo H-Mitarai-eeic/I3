@@ -1,7 +1,7 @@
 # I3
 EEIC-2021S-Experiment-I3
 
-## このプログラムについて
+# このプログラムについて
 学生実験の発展課題のプログラムです。
 電力スペクトル密度を利用して、音声の基本周波数を同定します.
 
@@ -15,6 +15,52 @@ EEIC-2021S-Experiment-I3
 
 まだ、編集中です。
 
+# 中身
+## 鍵盤の表示
 ```c
-for
+void print_keyboard(char *key, int N){
+    //int N = 52;
+    int i;
+    printf("\x1b[30m\x1b[47m|");
+    for(i = 0; i < N; i++){
+        if(i % 12 == 1 || i % 12 == 4 || i % 12 == 6 || i % 12 == 9 || i % 12 == 11){
+            if(key[i] == 1){
+                printf("\x1b[41m \x1b[47m");
+            }
+            else{
+                printf("\x1b[40m \x1b[47m");
+            }
+        }
+        else if (i % 12 == 2 || i % 12 == 7){
+            printf(" |");
+        }
+        else{
+            printf(" ");
+        }
+    }
+    printf("\n\x1b[47m|");
+    for (i = 0; i < N; i++){
+        if(i % 12 == 1 || i % 12 == 4 || i % 12 == 6 || i % 12 == 9 || i % 12 == 11){
+            printf("|");
+        }
+        else if (i % 12 == 2 || i % 12 == 7){
+            if (key[i] == 1){
+                printf("\x1b[41m_\x1b[47m|");            
+            }
+            else{
+                printf("_|");
+            }
+        }
+        else{
+            if (key[i] == 1){
+                printf("\x1b[41m_\x1b[47m");            
+            }
+            else{
+                printf("_");
+            }
+        }
+    }
+    printf("|\x1b[49m\x1b[39m\n");
+    fflush(stdout);
+}
 ```
