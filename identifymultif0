@@ -1,2 +1,2 @@
 #!/bin/bash
-rec -t raw -c 1 -e s -r 44100 -q - | ./bin/identify_multi_f0 16384 100000
+rec -t raw -c 1 -e s -r 44100 -q - | ./bin/identify_multi_f0 8192 100000

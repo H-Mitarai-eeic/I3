@@ -46,11 +46,20 @@ void print_keyboard(char *key, int N){
     printf("|\x1b[49m\x1b[39m\n");
     fflush(stdout);
 }
-
+int rounding(double A){  //四捨五入
+  double dec;
+  dec = A - (int)A;
+  if(dec >= 0.5){
+    return (int)A + 1;
+  }
+  else
+  return (int)A;
+}
 int main(void){
     char key[KeyNum] = {0};
     key[0] = 1;
     key[1] = 1;
     print_keyboard(key, KeyNum);
+    printf("%d\n", rounding(9.99));
     return 0;
 }

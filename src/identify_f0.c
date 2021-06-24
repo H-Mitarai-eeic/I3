@@ -252,6 +252,13 @@ void print_keyboard(char *key, int N){
     printf("|\x1b[49m\x1b[39m\n");
     fflush(stdout);
 }
+void copy_complex(complex double *Original, complex double *Copy, long n){
+  long i;
+  for (i = 0; i < n; i++){
+    Copy[i] = Original[i];
+  }
+  return;
+}
 int main(int argc, char ** argv) {
   (void)argc;
   long n = atol(argv[1]);
@@ -278,13 +285,14 @@ int main(int argc, char ** argv) {
   complex double * X = calloc(sizeof(complex double), n);
   complex double * Y = calloc(sizeof(complex double), n);
   complex double * PSD_comp = calloc(sizeof(complex double), n);
+  complex double * PSD_comp_cp = calloc(sizeof(complex double), n);
   complex double * ACF_comp = calloc(sizeof(complex double), n);
   double *ACF_re = calloc(sizeof(double), n);
   double *PSD_re = calloc(sizeof(double), n);
 
   double f0, T;
   int nt;
-  //int nf;
+  int nf;
 
   char key[KeyNum] = {0};
 
@@ -303,13 +311,14 @@ int main(int argc, char ** argv) {
     fft(X, Y, n);
 
     CALC_PSD(Y, PSD_comp, n, T);
+    copy_complex(PSD_comp, PSD_comp_cp, n);
     print_PSD(wP, PSD_comp, n, T);
 
     print_complex(wp, Y, n);
     fprintf(wp, "----------------\n");
 
     /* IFFT で　ACFを求める */
-    ifft(PSD_comp, ACF_comp, n);
+    ifft(PSD_comp_cp, ACF_comp, n);
     //f0 = f_at_PSD_max(PSD, n, (double)n / Fs);
 
     /* ACF, PSDの実部を取り出す */
@@ -320,7 +329,7 @@ int main(int argc, char ** argv) {
     nt = max_peak(ACF_re, n);
     f0 = Fs / nt;
 
-    //nf = rounding((double)n / nt);
+    nf = rounding((double)n / nt);
 
     //鍵盤の何番目に値するかを求める
     clear_array(key, KeyNum);
