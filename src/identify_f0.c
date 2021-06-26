@@ -333,7 +333,7 @@ int main(int argc, char ** argv) {
 
     //鍵盤の何番目に値するかを求める
     clear_array(key, KeyNum);
-    if(check_PSD(PSD_re, 0, threshold)){
+    if(check_PSD(PSD_re, nf, threshold)){
           store2key(f0 ,key, KeyNum);
     }
     //出力
